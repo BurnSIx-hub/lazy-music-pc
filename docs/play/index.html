@@ -20,6 +20,9 @@
   запасной адрес. ПК: пробуем lazymusic://; приложение открылось — окно
   браузера теряет фокус; нет — через пару секунд уходим на YouTube.
   Ничего не отправляется и не собирается: всё здесь, в браузере.
+
+  Язык — браузера: русский только у русского, остальным английский
+  (страницу открывают люди из Discord, не только наши).
 -->
 <style>
   :root { color-scheme: dark; --bg: #121214; --panel: #1c1c20; --text: #ececf1; --muted: #9b9ba6; --accent: #ff4d55; }
@@ -47,13 +50,33 @@
   <img id="cover" alt="">
   <h1 id="title"></h1>
   <p class="artist" id="artist"></p>
-  <p class="status" id="status">Открываю в Lazy Music…</p>
-  <a class="btn primary" id="app" href="#">Открыть в Lazy Music</a>
-  <a class="btn primary" id="get" href="#" hidden>Скачать Lazy Music</a>
-  <a class="btn ghost" id="yt" href="#">Открыть на YouTube</a>
+  <p class="status" id="status" data-tr>Открываю в Lazy Music…</p>
+  <a class="btn primary" id="app" href="#" data-tr>Открыть в Lazy Music</a>
+  <a class="btn primary" id="get" href="#" hidden data-tr>Скачать Lazy Music</a>
+  <a class="btn ghost" id="yt" href="#" data-tr>Открыть на YouTube</a>
 </main>
 <script>
 (() => {
+  // Надписи: русский — ключ, английский — для всех, у кого браузер не по-русски
+  const english = !/^ru\b/i.test(navigator.language || '');
+  const EN = {
+    'Открываю в Lazy Music…': 'Opening in Lazy Music…',
+    'Открыть в Lazy Music': 'Open in Lazy Music',
+    'Скачать Lazy Music': 'Download Lazy Music',
+    'Открыть на YouTube': 'Open on YouTube',
+    'К сожалению, ссылка сломана.': 'Sorry, this link is broken.',
+    'Трек на YouTube': 'A track on YouTube',
+    'Lazy Music для iPhone пока нет.': 'Lazy Music isn’t available for iPhone yet.',
+    'Lazy Music не установлена.': 'Lazy Music isn’t installed.',
+    'Открыто в Lazy Music.': 'Opened in Lazy Music.',
+    'Приложение Lazy Music не установлено, открываю YouTube…': 'Lazy Music isn’t installed, opening YouTube…',
+  };
+  const tr = ru => english ? EN[ru] ?? ru : ru;
+  if (english) {
+    document.documentElement.lang = 'en';
+    for (const el of document.querySelectorAll('[data-tr]')) el.textContent = tr(el.textContent);
+  }
+
   const q = new URLSearchParams(location.search);
   const id = q.get('v') || '';
   const title = (q.get('t') || '').slice(0, 200);
@@ -65,7 +88,7 @@
 
   // Не похоже на ролик YouTube — делать здесь нечего
   if (!/^[A-Za-z0-9_-]{11}$/.test(id)) {
-    $('status').textContent = 'К сожалению, ссылка сломана.';
+    $('status').textContent = tr('К сожалению, ссылка сломана.');
     $('app').hidden = $('yt').hidden = true;
     return;
   }
@@ -78,7 +101,7 @@
   const ios = /iPhone|iPad|iPod/i.test(ua);
 
   $('cover').src = 'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg';
-  $('title').textContent = title || 'Трек на YouTube';
+  $('title').textContent = title || tr('Трек на YouTube');
   $('artist').textContent = artist;
   $('yt').href = yt;
   document.title = (title ? title + ' — ' : '') + 'Lazy Music';
@@ -90,7 +113,7 @@
 
   /** Приложения нет, а выбрали именно его — сказать и дать выбор. */
   const missing = () => {
-    $('status').textContent = ios ? 'Lazy Music для iPhone пока нет.' : 'Lazy Music не установлена.';
+    $('status').textContent = ios ? tr('Lazy Music для iPhone пока нет.') : tr('Lazy Music не установлена.');
     $('app').hidden = true;
     $('get').hidden = ios;
   };
@@ -118,7 +141,7 @@
     opened = true;
     clearTimeout(timer);
     try { localStorage.setItem('lazymusic-app', '1'); } catch (e) {}
-    $('status').textContent = 'Открыто в Lazy Music.';
+    $('status').textContent = tr('Открыто в Lazy Music.');
   };
   window.addEventListener('blur', done);
   document.addEventListener('visibilitychange', () => { if (document.hidden) done(); });
@@ -126,7 +149,7 @@
   const timer = setTimeout(() => {
     if (opened) return;
     if (chosen) { missing(); return; }
-    $('status').textContent = 'Приложение Lazy Music не установлено, открываю YouTube…';
+    $('status').textContent = tr('Приложение Lazy Music не установлено, открываю YouTube…');
     location.replace(yt);
   }, known ? 6000 : 2500);
 
