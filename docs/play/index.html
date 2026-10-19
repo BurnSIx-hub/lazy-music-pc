@@ -10,7 +10,11 @@
   Lazy Music, если она стоит, иначе — на YouTube. Discord пускает в кнопку
   только обычные веб-ссылки, поэтому сначала сюда.
 
-  ?v=<id ролика>&t=<название>&a=<исполнитель>
+  ?v=<id ролика>&t=<название>&a=<исполнитель>[&app=1]
+
+  app=1 — человек сам выбрал «Lazy Music» (вторая кнопка в Discord —
+  «YouTube»): приложения нет — не уходим на YouTube молча, а говорим об
+  этом и даём «Скачать Lazy Music» и «Открыть на YouTube».
 
   Android (Chrome): intent-ссылка — система сама выбирает приложение или
   запасной адрес. ПК: пробуем lazymusic://; приложение открылось — окно
@@ -45,6 +49,7 @@
   <p class="artist" id="artist"></p>
   <p class="status" id="status">Открываю в Lazy Music…</p>
   <a class="btn primary" id="app" href="#">Открыть в Lazy Music</a>
+  <a class="btn primary" id="get" href="#" hidden>Скачать Lazy Music</a>
   <a class="btn ghost" id="yt" href="#">Открыть на YouTube</a>
 </main>
 <script>
@@ -54,6 +59,9 @@
   const title = (q.get('t') || '').slice(0, 200);
   const artist = (q.get('a') || '').slice(0, 200);
   const $ = s => document.getElementById(s);
+  // Выбрали именно Lazy Music; none=1 — Android вернул сюда: приложения нет
+  const chosen = q.get('app') === '1';
+  const none = q.get('none') === '1';
 
   // Не похоже на ролик YouTube — делать здесь нечего
   if (!/^[A-Za-z0-9_-]{11}$/.test(id)) {
@@ -75,13 +83,29 @@
   $('yt').href = yt;
   document.title = (title ? title + ' — ' : '') + 'Lazy Music';
 
-  // Android: Chrome сам откроет приложение, а нет его — запасной адрес
+  // Выпуски — где скачать приложение для этого устройства
+  $('get').href = android
+    ? 'https://github.com/BurnSIx-hub/lazy-music-android/releases/latest'
+    : 'https://github.com/BurnSIx-hub/lazy-music-pc/releases/latest';
+
+  /** Приложения нет, а выбрали именно его — сказать и дать выбор. */
+  const missing = () => {
+    $('status').textContent = ios ? 'Lazy Music для iPhone пока нет.' : 'Lazy Music не установлена.';
+    $('app').hidden = true;
+    $('get').hidden = ios;
+  };
+
+  // Android: Chrome сам откроет приложение, а нет его — запасной адрес:
+  // YouTube, а если выбрали Lazy Music — эта же страница с пометкой «нет»
+  const fallback = chosen ? location.href.split('#')[0] + '&none=1' : yt;
   const intent = 'intent://' + tail + '#Intent;scheme=lazymusic;package=com.lazymusic.app;S.browser_fallback_url=' +
-    encodeURIComponent(yt) + ';end';
+    encodeURIComponent(fallback) + ';end';
   $('app').href = android ? intent : app;
 
-  // Lazy Music для iPhone нет — сразу на YouTube
-  if (ios) { location.replace(yt); return; }
+  if (none) { missing(); return; }
+
+  // Lazy Music для iPhone нет — сразу на YouTube, или сказать, если выбрали её
+  if (ios) { if (chosen) missing(); else location.replace(yt); return; }
 
   // Помним в этом браузере, что приложение уже открывалось: тогда ждём
   // дольше — человек мог задержаться на вопросе «Открыть Lazy Music?»
@@ -101,6 +125,7 @@
 
   const timer = setTimeout(() => {
     if (opened) return;
+    if (chosen) { missing(); return; }
     $('status').textContent = 'Приложение Lazy Music не установлено, открываю YouTube…';
     location.replace(yt);
   }, known ? 6000 : 2500);
